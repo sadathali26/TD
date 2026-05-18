@@ -1,7 +1,8 @@
 {
   "name": "Truth or Dare",
   "short_name": "TruthDare",
-  "start_url": "/index.html",
+  "start_url": "/TD/index.html",
+  "scope": "/TD/",
   "display": "standalone",
   "background_color": "#070310",
   "theme_color": "#f43f5e",
