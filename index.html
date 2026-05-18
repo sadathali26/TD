@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Truth or Dare ✦</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --rose: #f43f5e;
+            --rose-soft: #fb7185;
+            --blush: #fda4af;
+            --midnight: #070310;
+            --deep: #100820;
+            --surface: rgba(255,255,255,0.045);
+            --violet: #8b5cf6;
+            --violet-soft: #a78bfa;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            height: 100dvh;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Nunito', sans-serif;
+            background: var(--midnight);
+            color: #fff;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #root {
+            height: 100%;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .font-display { font-family: 'Playfair Display', serif; }
+
+        /* Subtle grain overlay */
+        body::after {
+            content: '';
+            position: fixed; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+            opacity: 0.025;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .glass {
+            background: rgba(255,255,255,0.04);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.07);
+        }
+
+        .glass-strong {
+            background: rgba(255,255,255,0.07);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .chat-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .chat-scroll::-webkit-scrollbar { width: 2px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: rgba(244,63,94,0.25); border-radius: 99px; }
+
+        @keyframes floatUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.94); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulseRing {
+            0%   { box-shadow: 0 0 0 0 rgba(244,63,94,0.55); }
+            70%  { box-shadow: 0 0 0 12px rgba(244,63,94,0); }
+            100% { box-shadow: 0 0 0 0 rgba(244,63,94,0); }
+        }
+        @keyframes breathe {
+            0%,100% { opacity: 0.6; } 50% { opacity: 1; }
+        }
+        @keyframes waveBar {
+            0%,100% { height: 4px; } 50% { height: 14px; }
+        }
+
+        .float-up   { animation: floatUp 0.32s ease forwards; }
+        .scale-in   { animation: scaleIn 0.28s ease forwards; }
+        .ring-pulse { animation: pulseRing 1.5s infinite; }
+        .breathe    { animation: breathe 2s ease-in-out infinite; }
+        .spin       { animation: spin 0.9s linear infinite; }
+
+        .loader {
+            width: 20px; height: 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top-color: var(--rose);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        /* Buttons */
+        .btn-rose {
+            background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+            color: #fff;
+            cursor: pointer;
+            transition: filter 0.18s, transform 0.12s;
+        }
+        .btn-rose:not(:disabled):hover  { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-rose:not(:disabled):active { filter: brightness(0.93); transform: translateY(0); }
+        .btn-rose:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .btn-violet {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            color: #fff;
+            cursor: pointer;
+            transition: filter 0.18s, transform 0.12s;
+        }
+        .btn-violet:not(:disabled):hover  { filter: brightness(1.1); }
+        .btn-violet:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* Question cards */
+        .card-truth {
+            background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08));
+            border: 1px solid rgba(139,92,246,0.22);
+            transition: all 0.18s;
+        }
+        .card-truth:active { transform: scale(0.97); }
+        .card-truth.selected {
+            background: linear-gradient(135deg, rgba(99,102,241,0.28), rgba(139,92,246,0.2));
+            border-color: rgba(139,92,246,0.65);
+            box-shadow: 0 0 18px rgba(139,92,246,0.25);
+        }
+        .card-dare {
+            background: linear-gradient(135deg, rgba(244,63,94,0.12), rgba(225,29,72,0.08));
+            border: 1px solid rgba(244,63,94,0.22);
+            transition: all 0.18s;
+        }
+        .card-dare:active { transform: scale(0.97); }
+        .card-dare.selected {
+            background: linear-gradient(135deg, rgba(244,63,94,0.28), rgba(225,29,72,0.2));
+            border-color: rgba(244,63,94,0.65);
+            box-shadow: 0 0 18px rgba(244,63,94,0.25);
+        }
+
+        input, textarea {
+            -webkit-appearance: none;
+            font-family: 'Nunito', sans-serif;
+        }
+        input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.22); }
+
+        /* Scrollbar hide for suggestion rows */
+        .no-scroll { scrollbar-width: none; }
+        .no-scroll::-webkit-scrollbar { display: none; }
+
+        /* Bubble tails */
+        .bubble-me   { border-bottom-right-radius: 4px !important; }
+        .bubble-them { border-bottom-left-radius: 4px !important; }
+
+        /* Wave bars for recording */
+        .wave-bar {
+            width: 3px;
+            background: var(--rose-soft);
+            border-radius: 99px;
+            animation: waveBar 0.7s ease-in-out infinite;
+        }
+        .wave-bar:nth-child(1) { animation-delay: 0s; }
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.15s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.05s; }
+
+        /* Tap & Say glow dot */
+        @keyframes dotPop {
+            0%   { transform: scale(0); }
+            60%  { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+        .dot-pop { animation: dotPop 0.25s ease forwards; }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Firebase -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    window.FirebaseLib = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot };
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ─── Data Banks ─────────────────────────────────────────────────────────── */
+const TRUTH_BANK = [
+    "What's your idea of a perfect, dreamy date night? ✨",
+    "What small thing makes you instantly fall for someone? 💫",
+    "Have you ever stayed up all night talking to someone you liked?",
+    "What song reminds you of a specific feeling or person?",
+    "What's the sweetest thing anyone has ever done for you? 🌹",
+    "What's your love language and what makes you feel most seen?",
+    "Describe your dream partner in exactly 5 words.",
+    "Have you ever left a note for someone you liked?",
+    "What's the first thing you notice about someone you're drawn to?",
+    "What's the most romantic thing you've ever witnessed?",
+    "What's something you'd love someone special to know about you?",
+    "What's a favourite memory that still makes you smile?",
+    "If you could be anywhere with someone right now, where?",
+    "What's something that always gives you butterflies?",
+    "What's the most thoughtful gift you've ever given or received?",
+];
+
+const DARE_BANK = [
+    "Write me a tiny 3-line poem right now 🖊️",
+    "Describe me using only 5 emojis — no words allowed",
+    "Tell me something sweet you've been too shy to say 💌",
+    "Paint a picture in words of our ideal day together",
+    "Give me your honest, sweetest first impression of me",
+    "Say something kind to me in a language other than English",
+    "Name 3 things you genuinely love about yourself ✨",
+    "Confess a small, innocent crush story",
+    "Tell me your go-to cheesy pickup line and own it 😄",
+    "Describe your idea of a cozy rainy day with someone you like",
+    "Hum or sing the first line of your favourite love song 🎵",
+    "Tell me something you find unexpectedly adorable in a person",
+    "Describe the perfect good morning text you'd want to receive",
+    "What would you do to make someone's tough day instantly better?",
+];
+
+/* ─── Icons ──────────────────────────────────────────────────────────────── */
+const IC = {
+    Send:   () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>,
+    Mic:    () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>,
+    Camera: () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>,
+    Type:   () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg>,
+    Stop:   () => <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect width="16" height="16" x="4" y="4" rx="2"/></svg>,
+    Check:  () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
+    Wave:   () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
+};
+
+/* ─── Audio Recorder ─────────────────────────────────────────────────────── */
+const AudioRecorder = ({ onComplete, onCancel, label = "Recording" }) => {
+    const [timeLeft, setTimeLeft] = useState(7);
+    const [error, setError]       = useState(null);
+    const mr    = useRef(null);
+    const chunks = useRef([]);
+    const timer  = useRef(null);
+
+    useEffect(() => {
+        start();
+        return () => { clearInterval(timer.current); };
+    }, []);
+
+    const start = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mr.current = new MediaRecorder(stream);
+            chunks.current = [];
+            mr.current.ondataavailable = e => chunks.current.push(e.data);
+            mr.current.onstop = () => {
+                stream.getTracks().forEach(t => t.stop());
+                const blob   = new Blob(chunks.current, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = () => onComplete(reader.result);
+            };
+            mr.current.start();
+            timer.current = setInterval(() => {
+                setTimeLeft(p => {
+                    if (p <= 1) { stop(); return 0; }
+                    return p - 1;
+                });
+            }, 1000);
+        } catch { setError("Mic access denied."); }
+    };
+
+    const stop = () => {
+        clearInterval(timer.current);
+        if (mr.current?.state === 'recording') mr.current.stop();
+    };
+
+    if (error) return (
+        <div className="text-center py-3">
+            <p className="text-rose-400 text-sm mb-2">{error}</p>
+            <button onClick={onCancel} className="text-white/35 text-xs underline">cancel</button>
+        </div>
+    );
+
+    return (
+        <div className="flex items-center justify-between py-1">
+            <div className="flex items-center gap-3">
+                <button onClick={stop} className="w-9 h-9 rounded-full bg-rose-500 ring-pulse flex items-center justify-center text-white shrink-0">
+                    <IC.Stop/>
+                </button>
+                <div>
+                    <p className="text-xs font-semibold text-rose-400">{label} · {timeLeft}s</p>
+                    <div className="flex items-end gap-0.5 h-4 mt-1">
+                        <div className="wave-bar"/>
+                        <div className="wave-bar"/>
+                        <div className="wave-bar"/>
+                        <div className="wave-bar"/>
+                        <div className="wave-bar"/>
+                    </div>
+                </div>
+            </div>
+            <button onClick={onCancel} className="text-white/30 text-xs px-3 py-1.5 rounded-xl hover:text-white/60 transition-colors">cancel</button>
+        </div>
+    );
+};
+
+/* ─── Camera Capture ─────────────────────────────────────────────────────── */
+const CameraCapture = ({ onComplete, onCancel }) => {
+    const videoRef  = useRef(null);
+    const streamRef = useRef(null);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                streamRef.current = s;
+                if (videoRef.current) videoRef.current.srcObject = s;
+            } catch { setError("Camera access denied."); }
+        })();
+        return () => streamRef.current?.getTracks().forEach(t => t.stop());
+    }, []);
+
+    const snap = () => {
+        const canvas = document.createElement('canvas');
+        const W      = 280;
+        const scale  = W / videoRef.current.videoWidth;
+        canvas.width = W;
+        canvas.height = videoRef.current.videoHeight * scale;
+        canvas.getContext('2d').drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        streamRef.current?.getTracks().forEach(t => t.stop());
+        onComplete(canvas.toDataURL('image/jpeg', 0.65));
+    };
+
+    if (error) return <p className="text-rose-400 text-sm text-center py-4">{error}</p>;
+
+    return (
+        <div className="flex flex-col gap-3 py-1">
+            <div className="w-full rounded-2xl overflow-hidden bg-black relative" style={{maxHeight:'200px',aspectRatio:'3/4'}}>
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover"/>
+            </div>
+            <div className="flex gap-2">
+                <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl glass text-white/60 text-sm font-semibold">Cancel</button>
+                <button onClick={snap}     className="flex-1 py-2.5 rounded-xl btn-rose text-sm font-bold">📸 Snap!</button>
+            </div>
+        </div>
+    );
+};
+
+/* ─── Chat Bubble ────────────────────────────────────────────────────────── */
+const ChatBubble = ({ msg, players, meId }) => {
+    if (msg.sender === 'system') return (
+        <div className="flex justify-center my-3 float-up">
+            <span className="text-[11px] text-white/35 bg-white/5 px-4 py-1.5 rounded-full tracking-wide">{msg.content}</span>
+        </div>
+    );
+
+    const isMe      = msg.sender === meId;
+    const isQ       = msg.type === 'question';
+    const isA       = msg.type === 'answer';
+    const alignment = isMe ? 'justify-end' : 'justify-start';
+
+    let bubbleBg;
+    if (isMe)  bubbleBg = isQ ? 'bg-gradient-to-br from-violet-600 to-violet-800' : 'bg-gradient-to-br from-rose-500 to-rose-700';
+    else       bubbleBg = isQ ? 'bg-gradient-to-br from-violet-900/60 to-purple-900/50 border border-violet-500/18' : 'glass';
+
+    return (
+        <div className={`flex w-full mb-3 float-up ${alignment}`}>
+            <div className={`max-w-[80%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                <span className="text-[10px] text-white/30 mb-1 mx-2 font-semibold tracking-wide">
+                    {players[msg.sender] || 'Player'}{isMe ? ' · you' : ''}
+                </span>
+                <div className={`px-4 py-3 rounded-2xl shadow-md ${bubbleBg} ${isMe ? 'bubble-me' : 'bubble-them'}`}>
+                    {isQ && msg.qType && (
+                        <span className={`text-[10px] font-bold uppercase tracking-widest block mb-1.5 ${msg.qType === 'Truth' ? 'text-indigo-300' : 'text-rose-300'}`}>
+                            {msg.qType === 'Truth' ? '💬 Truth' : '⚡ Dare'}
+                        </span>
+                    )}
+                    {isA && (
+                        <span className="text-[10px] font-bold uppercase tracking-widest block mb-1.5 text-white/45">✨ Answer</span>
+                    )}
+                    {msg.contentType === 'text'  && <p className="text-sm leading-relaxed">{msg.content}</p>}
+                    {msg.contentType === 'audio' && (
+                        <div className="flex items-center gap-2">
+                            <span>🎵</span>
+                            <audio controls src={msg.content} style={{width:'155px', height:'32px', filter:'invert(0.75) hue-rotate(180deg)'}}/>
+                        </div>
+                    )}
+                    {msg.contentType === 'image' && <img src={msg.content} alt="photo" className="rounded-xl max-w-full border border-white/10"/>}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* ─── Tap & Say (walkie-talkie) ──────────────────────────────────────────── */
+const TapAndSay = ({ fb, gameCode, gameData, meId }) => {
+    const [mode, setMode]   = useState('idle'); // idle | recording | sending
+    const playedRef         = useRef(false);
+    const prevUrlRef        = useRef(null);
+
+    /* Auto-play incoming once */
+    useEffect(() => {
+        const tas = gameData.tapAndSay;
+        if (!tas || tas.from === meId || tas.played) return;
+        if (tas.url === prevUrlRef.current) return;
+        prevUrlRef.current = tas.url;
+        playedRef.current  = true;
+        const audio = new Audio(tas.url);
+        audio.play().catch(() => {});
+        audio.onended = () => {
+            fb.updateDoc(fb.doc(fb.db, 'truth_or_dare_games', gameCode), { 'tapAndSay.played': true });
+        };
+    }, [gameData.tapAndSay]);
+
+    const handleSend = async (base64) => {
+        setMode('sending');
+        await fb.updateDoc(fb.doc(fb.db, 'truth_or_dare_games', gameCode), {
+            tapAndSay: { url: base64, from: meId, played: false, ts: Date.now() }
+        }).catch(() => {});
+        setMode('idle');
+    };
+
+    const tas         = gameData.tapAndSay;
+    const hasIncoming = tas && tas.from !== meId && !tas.played;
+
+    if (mode === 'recording') return (
+        <div className="flex-1 mx-2">
+            <AudioRecorder label="Tap & Say" onComplete={handleSend} onCancel={() => setMode('idle')}/>
+        </div>
+    );
+
+    return (
+        <button
+            onClick={() => mode === 'idle' && setMode('recording')}
+            disabled={mode === 'sending'}
+            title="Tap & Say — voice to your partner"
+            className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                hasIncoming
+                    ? 'bg-amber-500/20 border border-amber-400/40 text-amber-300'
+                    : 'glass text-white/45 hover:text-white/75 hover:border-white/20'
+            }`}
+        >
+            {mode === 'sending' ? <div className="loader w-4 h-4"/> : <IC.Mic/>}
+            {hasIncoming && (
+                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border-[2px] border-[#070310] dot-pop"/>
+            )}
+        </button>
+    );
+};
+
+/* ─── Game Room ──────────────────────────────────────────────────────────── */
+const GameRoom = ({ user, gameCode, gameData, fb }) => {
+    const [customText,  setCustomText]  = useState('');
+    const [selTruth,    setSelTruth]    = useState(null);
+    const [selDare,     setSelDare]     = useState(null);
+    const [customTruth, setCustomTruth] = useState('');
+    const [customDare,  setCustomDare]  = useState('');
+    const chatEndRef = useRef(null);
+
+    const meId       = user.uid;
+    const pOrder     = gameData.playerOrder || [];
+    const players    = gameData.players || {};
+    const opponentId = pOrder.find(id => id !== meId);
+    const fullLobby  = pOrder.length === 2;
+    const turnIndex  = gameData.turnIndex || 0;
+    const step       = gameData.step || 'CHOOSE_QUESTIONS';
+    const askerId    = pOrder[turnIndex % 2];
+    const answererId = pOrder[(turnIndex + 1) % 2];
+
+    const activeId = ['CHOOSE_QUESTIONS'].includes(step) ? askerId : answererId;
+    const isMyTurn = activeId === meId;
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [gameData.chat]);
+
+    useEffect(() => {
+        if (step === 'CHOOSE_QUESTIONS') {
+            setSelTruth(null); setSelDare(null);
+            setCustomTruth(''); setCustomDare('');
+        }
+    }, [step, turnIndex]);
+
+    const updateGame = async (u) => {
+        try { await fb.updateDoc(fb.doc(fb.db, 'truth_or_dare_games', gameCode), u); }
+        catch (e) { console.error(e); }
+    };
+
+    const addMsg = (content, type = 'text', qType = null, contentType = 'text') => {
+        const msg = { id: Date.now() + Math.random(), sender: meId, content, type, qType, contentType };
+        let chat = [...(gameData.chat || []), msg];
+        if (chat.length > 30) chat = chat.slice(-30);
+        return chat;
+    };
+
+    /* Asker sends two questions */
+    const handleSendQuestions = () => {
+        const t = customTruth.trim() || selTruth;
+        const d = customDare.trim()  || selDare;
+        if (!t || !d) return;
+        const chat = addMsg(JSON.stringify({ truth: t, dare: d }), 'choice', null, 'choice');
+        updateGame({ chat, step: 'ANSWERER_CHOOSES', pendingTruth: t, pendingDare: d });
+    };
+
+    /* Answerer chooses which to answer */
+    const handleAnswerChoice = (type) => {
+        const q    = type === 'Truth' ? gameData.pendingTruth : gameData.pendingDare;
+        const prev = (gameData.chat || []).filter(m => m.contentType !== 'choice');
+        const msg  = { id: Date.now() + Math.random(), sender: meId, content: q, type: 'question', qType: type, contentType: 'text' };
+        let newChat = [...prev, msg];
+        if (newChat.length > 30) newChat = newChat.slice(-30);
+        updateGame({ chat: newChat, step: 'CHOOSE_ANSWER_METHOD', selectedType: type, selectedQuestion: q, answerMethod: '' });
+    };
+
+    const handleMethodSelect = (m) => updateGame({ answerMethod: m, step: 'PROVIDING_ANSWER' });
+
+    const handleAnswerComplete = (content, contentType = 'text') => {
+        const chat = addMsg(content, 'answer', null, contentType);
+        updateGame({ chat, step: 'CHOOSE_QUESTIONS', turnIndex: (turnIndex + 1) % 2, answerMethod: '', pendingTruth: '', pendingDare: '' });
+        setCustomText('');
+    };
+
+    /* ── Waiting room ── */
+    if (!fullLobby) return (
+        <div className="flex flex-col items-center justify-center h-full px-6 relative overflow-hidden"
+             style={{background:'linear-gradient(150deg, #070310 0%, #120820 60%, #070310 100%)'}}>
+            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full pointer-events-none"
+                 style={{background:'radial-gradient(circle, rgba(244,63,94,0.1),transparent)', filter:'blur(50px)'}}/>
+            <div className="w-full max-w-xs glass p-8 rounded-3xl text-center z-10 scale-in" style={{boxShadow:'0 0 50px rgba(244,63,94,0.1)'}}>
+                <div className="text-4xl mb-4 breathe">💌</div>
+                <h2 className="font-display text-2xl font-bold mb-2">Waiting for them…</h2>
+                <p className="text-white/45 text-sm mb-6">Share this code with your special someone</p>
+                <div className="bg-black/50 border border-white/10 rounded-2xl py-5 tracking-[0.5em] text-3xl font-mono text-rose-400 mb-6">{gameCode}</div>
+                <div className="flex justify-center"><div className="loader"/></div>
+            </div>
+        </div>
+    );
+
+    /* ── Input area renderer ── */
+    const renderInput = () => {
+        if (!isMyTurn) return (
+            <div className="flex items-center justify-center gap-3 py-4">
+                <div className="loader"/>
+                <p className="text-white/35 text-xs tracking-widest uppercase">
+                    Waiting for {players[activeId] || 'them'}…
+                </p>
+            </div>
+        );
+
+        /* ASKER: pick 1 truth + 1 dare */
+        if (step === 'CHOOSE_QUESTIONS') {
+            const truthReady = customTruth.trim() || selTruth;
+            const dareReady  = customDare.trim()  || selDare;
+            return (
+                <div className="space-y-3 float-up">
+                    <p className="text-center text-[11px] text-rose-400 font-bold uppercase tracking-widest">Your turn to ask 💬</p>
+
+                    {/* Truth row */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-[10px] text-violet-400 font-bold uppercase tracking-wider">Pick a Truth</span>
+                            {selTruth && <span className="text-[10px] text-violet-300 flex items-center gap-1"><IC.Check/> selected</span>}
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1 no-scroll snap-x snap-mandatory">
+                            {TRUTH_BANK.slice(0,7).map((q, i) => (
+                                <button key={i} onClick={() => { setSelTruth(q); setCustomTruth(''); }}
+                                    className={`card-truth snap-center shrink-0 w-40 text-left text-xs p-3 rounded-xl ${selTruth === q ? 'selected' : ''}`}>
+                                    {q}
+                                </button>
+                            ))}
+                        </div>
+                        <input value={customTruth} onChange={e => { setCustomTruth(e.target.value); setSelTruth(null); }}
+                            placeholder="Or write your own truth…"
+                            className="w-full mt-2 bg-white/5 border border-white/10 focus:border-violet-500/45 rounded-xl px-3 py-2.5 text-sm text-white outline-none transition-colors"/>
+                    </div>
+
+                    {/* Dare row */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-[10px] text-rose-400 font-bold uppercase tracking-wider">Pick a Dare</span>
+                            {selDare && <span className="text-[10px] text-rose-300 flex items-center gap-1"><IC.Check/> selected</span>}
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1 no-scroll snap-x snap-mandatory">
+                            {DARE_BANK.slice(0,7).map((q, i) => (
+                                <button key={i} onClick={() => { setSelDare(q); setCustomDare(''); }}
+                                    className={`card-dare snap-center shrink-0 w-40 text-left text-xs p-3 rounded-xl ${selDare === q ? 'selected' : ''}`}>
+                                    {q}
+                                </button>
+                            ))}
+                        </div>
+                        <input value={customDare} onChange={e => { setCustomDare(e.target.value); setSelDare(null); }}
+                            placeholder="Or write your own dare…"
+                            className="w-full mt-2 bg-white/5 border border-white/10 focus:border-rose-500/45 rounded-xl px-3 py-2.5 text-sm text-white outline-none transition-colors"/>
+                    </div>
+
+                    <button onClick={handleSendQuestions} disabled={!truthReady || !dareReady}
+                        className="w-full btn-rose py-3.5 rounded-2xl font-bold text-sm tracking-wide">
+                        Send both to them ✨
+                    </button>
+                </div>
+            );
+        }
+
+        /* ANSWERER: choose truth or dare */
+        if (step === 'ANSWERER_CHOOSES') return (
+            <div className="space-y-3 float-up">
+                <p className="text-center text-[11px] text-rose-300 font-bold uppercase tracking-widest">Your choice 💫</p>
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => handleAnswerChoice('Truth')}
+                        className="card-truth flex flex-col gap-2 p-4 rounded-2xl text-left active:scale-95 transition-all">
+                        <span className="text-[10px] font-bold text-violet-300 uppercase tracking-wider">💬 Truth</span>
+                        <span className="text-xs text-white/75 leading-relaxed line-clamp-4">{gameData.pendingTruth}</span>
+                    </button>
+                    <button onClick={() => handleAnswerChoice('Dare')}
+                        className="card-dare flex flex-col gap-2 p-4 rounded-2xl text-left active:scale-95 transition-all">
+                        <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wider">⚡ Dare</span>
+                        <span className="text-xs text-white/75 leading-relaxed line-clamp-4">{gameData.pendingDare}</span>
+                    </button>
+                </div>
+                <p className="text-center text-white/25 text-[11px]">Tap whichever you want to answer</p>
+            </div>
+        );
+
+        /* Choose answer method */
+        if (step === 'CHOOSE_ANSWER_METHOD') return (
+            <div className="space-y-3 float-up">
+                <p className="text-center text-[11px] text-indigo-300 font-bold uppercase tracking-widest">How will you answer? ✨</p>
+                <div className="grid grid-cols-3 gap-2">
+                    {[
+                        { label:'Type',  icon:<IC.Type/>,   m:'text'   },
+                        { label:'Voice', icon:<IC.Mic/>,    m:'audio'  },
+                        { label:'Photo', icon:<IC.Camera/>, m:'camera' },
+                    ].map(({ label, icon, m }) => (
+                        <button key={m} onClick={() => handleMethodSelect(m)}
+                            className="flex flex-col items-center gap-2.5 glass py-4 rounded-2xl text-white/60 hover:text-white hover:bg-white/10 active:scale-95 transition-all">
+                            {icon}
+                            <span className="text-xs font-semibold">{label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+
+        /* Providing answer */
+        if (step === 'PROVIDING_ANSWER') {
+            if (gameData.answerMethod === 'text') return (
+                <div className="space-y-2 float-up">
+                    <p className="text-[10px] text-white/35 uppercase tracking-widest text-center mb-1">
+                        Answering {gameData.selectedType}
+                    </p>
+                    <div className="flex gap-2 items-end glass rounded-2xl p-1 focus-within:border-rose-500/35 border border-white/10 transition-colors">
+                        <textarea autoFocus value={customText} onChange={e => setCustomText(e.target.value)}
+                            placeholder="Pour your heart out…"
+                            className="flex-1 bg-transparent outline-none px-3 py-2.5 text-sm text-white resize-none h-[68px]"/>
+                        <button onClick={() => customText.trim() && handleAnswerComplete(customText.trim())}
+                            disabled={!customText.trim()}
+                            className="btn-rose p-3 rounded-xl mb-1 mr-1 shrink-0 disabled:opacity-30">
+                            <IC.Send/>
+                        </button>
+                    </div>
+                </div>
+            );
+            if (gameData.answerMethod === 'audio') return (
+                <div className="glass rounded-2xl p-3 float-up">
+                    <AudioRecorder onComplete={u => handleAnswerComplete(u,'audio')} onCancel={() => updateGame({step:'CHOOSE_ANSWER_METHOD'})}/>
+                </div>
+            );
+            if (gameData.answerMethod === 'camera') return (
+                <div className="glass rounded-2xl p-3 float-up">
+                    <CameraCapture onComplete={u => handleAnswerComplete(u,'image')} onCancel={() => updateGame({step:'CHOOSE_ANSWER_METHOD'})}/>
+                </div>
+            );
+        }
+    };
+
+    const tapSayRecording = false; // managed inside TapAndSay; just for layout
+
+    return (
+        <div className="flex flex-col h-full w-full max-w-lg mx-auto relative overflow-hidden"
+             style={{background:'linear-gradient(170deg,#070310 0%,#110820 55%,#070310 100%)'}}>
+
+            {/* Ambient blobs */}
+            <div className="fixed top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full pointer-events-none -z-0"
+                 style={{background:'radial-gradient(circle, rgba(244,63,94,0.06),transparent)', filter:'blur(70px)'}}/>
+            <div className="fixed bottom-1/4 right-0 w-64 h-64 rounded-full pointer-events-none -z-0"
+                 style={{background:'radial-gradient(circle, rgba(139,92,246,0.07),transparent)', filter:'blur(70px)'}}/>
+
+            {/* ── Header ── */}
+            <header className="flex-shrink-0 glass px-4 py-3 flex items-center justify-between z-20 rounded-b-2xl">
+                <div className="min-w-0 mr-2">
+                    <h1 className="font-display text-lg font-bold leading-tight truncate">
+                        Truth <em className="text-rose-400 not-italic">or</em> Dare
+                    </h1>
+                    <p className="text-[10px] text-white/30 tracking-wide mt-0.5 truncate">
+                        {players[meId] || '…'} <span className="opacity-40">✦</span> {players[opponentId] || '…'}
+                        <span className="ml-2 opacity-40">· {gameCode}</span>
+                    </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <TapAndSay fb={fb} gameCode={gameCode} gameData={gameData} meId={meId}/>
+                    <div className={`px-2.5 py-1.5 rounded-full text-[10px] font-semibold flex items-center gap-1.5 transition-all ${
+                        isMyTurn
+                            ? 'bg-rose-500/18 text-rose-300 border border-rose-500/30'
+                            : 'bg-white/5 text-white/30 border border-white/8'
+                    }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isMyTurn ? 'bg-rose-400 animate-pulse' : 'bg-white/18'}`}/>
+                        {isMyTurn ? 'Your turn' : 'Waiting…'}
+                    </div>
+                </div>
+            </header>
+
+            {/* ── Chat ── */}
+            <main className="flex-1 chat-scroll px-4 py-4 z-10 relative">
+                {(gameData.chat || [])
+                    .filter(m => m.contentType !== 'choice')
+                    .map(msg => <ChatBubble key={msg.id} msg={msg} players={players} meId={meId}/>)}
+                <div ref={chatEndRef} className="pb-2"/>
+            </main>
+
+            {/* ── Footer ── */}
+            <footer className="flex-shrink-0 glass px-4 pt-3 pb-safe z-20 rounded-t-2xl border-t border-white/5"
+                    style={{paddingBottom:'max(24px, env(safe-area-inset-bottom, 20px))'}}>
+                {renderInput()}
+            </footer>
+        </div>
+    );
+};
+
+/* ─── App (Auth + Lobby) ─────────────────────────────────────────────────── */
+const App = () => {
+    const [fb,          setFb]         = useState(null);
+    const [user,        setUser]       = useState(null);
+    const [gameCode,    setGameCode]   = useState(null);
+    const [gameData,    setGameData]   = useState(null);
+    const [playerName,  setPlayerName] = useState('');
+    const [joinCode,    setJoinCode]   = useState('');
+    const [loading,     setLoading]    = useState("Connecting…");
+    const [error,       setError]      = useState('');
+
+    /* Firebase init */
+    useEffect(() => {
+        (async () => {
+            let tries = 0;
+            while (!window.FirebaseLib && tries++ < 30) await new Promise(r => setTimeout(r, 100));
+            if (!window.FirebaseLib) { setError("Network error. Please refresh."); setLoading(null); return; }
+
+            const lib = window.FirebaseLib;
+            const config = {
+                apiKey: "AIzaSyBfMXn3fTb-vKkl0kE3v5hwIhohv2LMVac",
+                authDomain: "teedee-94589.firebaseapp.com",
+                projectId: "teedee-94589",
+                storageBucket: "teedee-94589.firebasestorage.app",
+                messagingSenderId: "463895487776",
+                appId: "1:463895487776:web:9574f06f81ce326de6e345"
+            };
+            const app  = lib.initializeApp(config);
+            const auth = lib.getAuth(app);
+            const db   = lib.getFirestore(app);
+            setFb({ app, auth, db, ...lib });
+            try { await lib.signInAnonymously(auth); }
+            catch { setError("Auth failed. Enable Anonymous sign-in in Firebase."); setLoading(null); return; }
+            lib.onAuthStateChanged(auth, u => { setUser(u); setLoading(null); });
+        })();
+    }, []);
+
+    /* Game sync */
+    useEffect(() => {
+        if (!fb || !user || !gameCode) return;
+        const ref = fb.doc(fb.db, 'truth_or_dare_games', gameCode);
+        return fb.onSnapshot(ref,
+            snap => { if (snap.exists()) setGameData(snap.data()); else setError("Room closed."); },
+            ()   => setError("Connection lost.")
+        );
+    }, [fb, user, gameCode]);
+
+    const handleCreate = async () => {
+        if (!playerName.trim() || !fb || !user) return;
+        setLoading("Creating room…");
+        const code = Math.random().toString(36).substring(2, 7).toUpperCase();
+        try {
+            await fb.setDoc(fb.doc(fb.db, 'truth_or_dare_games', code), {
+                players: { [user.uid]: playerName.trim() },
+                playerOrder: [user.uid],
+                turnIndex: 0,
+                step: 'CHOOSE_QUESTIONS',
+                chat: [{ id: 'sys-1', sender: 'system', content: `💌 ${playerName.trim()} created the room` }]
+            });
+            setGameCode(code);
+        } catch { setError("Failed to create room. Check Firestore rules."); }
+        setLoading(null);
+    };
+
+    const handleJoin = async () => {
+        if (!playerName.trim() || joinCode.trim().length !== 5 || !fb || !user) return;
+        setLoading("Joining…");
+        const code = joinCode.trim().toUpperCase();
+        try {
+            const snap = await fb.getDoc(fb.doc(fb.db, 'truth_or_dare_games', code));
+            if (!snap.exists()) { setError("Invalid code."); setLoading(null); return; }
+            const data = snap.data();
+            if (data.playerOrder.includes(user.uid)) { setGameCode(code); setLoading(null); return; }
+            if (data.playerOrder.length >= 2) { setError("Room is full."); setLoading(null); return; }
+            await fb.updateDoc(fb.doc(fb.db, 'truth_or_dare_games', code), {
+                [`players.${user.uid}`]: playerName.trim(),
+                playerOrder: [...data.playerOrder, user.uid],
+                chat: [...data.chat, { id:'sys-join', sender:'system', content:`🌸 ${playerName.trim()} joined!` }]
+            });
+            setGameCode(code);
+        } catch { setError("Failed to join room."); }
+        setLoading(null);
+    };
+
+    /* Loading screen */
+    if (loading) return (
+        <div className="flex h-full items-center justify-center" style={{background:'#070310'}}>
+            <div className="flex flex-col items-center gap-4">
+                <div className="text-4xl breathe">💌</div>
+                <div className="loader"/>
+                <p className="text-white/35 text-sm">{loading}</p>
+            </div>
+        </div>
+    );
+
+    /* Active game */
+    if (gameCode && gameData) return <GameRoom user={user} gameCode={gameCode} gameData={gameData} fb={fb}/>;
+
+    /* ── Lobby ── */
+    return (
+        <div className="flex flex-col items-center justify-center min-h-full px-6 py-10 relative overflow-hidden"
+             style={{background:'linear-gradient(150deg,#070310 0%,#140a22 55%,#070310 100%)'}}>
+
+            {/* Ambient blobs */}
+            <div className="absolute pointer-events-none"
+                 style={{top:'12%',left:'5%',width:'260px',height:'260px',
+                         background:'radial-gradient(circle,rgba(244,63,94,0.1),transparent)',
+                         borderRadius:'50%',filter:'blur(55px)'}}/>
+            <div className="absolute pointer-events-none"
+                 style={{bottom:'15%',right:'5%',width:'200px',height:'200px',
+                         background:'radial-gradient(circle,rgba(139,92,246,0.1),transparent)',
+                         borderRadius:'50%',filter:'blur(55px)'}}/>
+
+            <div className="w-full max-w-sm z-10">
+
+                {/* Logo */}
+                <div className="text-center mb-8 scale-in">
+                    <div className="text-5xl mb-3 breathe">💌</div>
+                    <h1 className="font-display text-4xl font-bold"
+                        style={{background:'linear-gradient(135deg,#fb7185,#f9a8d4,#a78bfa)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
+                        Truth or Dare
+                    </h1>
+                    <p className="text-white/30 text-xs mt-2 tracking-[0.25em] uppercase">Just the two of you</p>
+                </div>
+
+                {/* Error */}
+                {error && (
+                    <div className="bg-rose-500/10 border border-rose-500/25 text-rose-300 px-4 py-3 rounded-2xl text-sm mb-5 flex items-center justify-between">
+                        <span>{error}</span>
+                        <button onClick={() => setError('')} className="ml-3 text-rose-400/50 hover:text-rose-300 font-bold transition-colors">✕</button>
+                    </div>
+                )}
+
+                {/* Card */}
+                <div className="glass p-6 rounded-3xl space-y-4" style={{boxShadow:'0 0 60px rgba(244,63,94,0.06)'}}>
+
+                    <div>
+                        <label className="block text-[11px] font-semibold text-white/40 mb-2 ml-1 uppercase tracking-wider">Your name</label>
+                        <input
+                            value={playerName} onChange={e => setPlayerName(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                            placeholder="What shall I call you? ✨"
+                            className="w-full bg-white/5 border border-white/10 focus:border-rose-500/40 rounded-2xl px-4 py-3.5 text-white text-sm outline-none transition-colors"/>
+                    </div>
+
+                    <button onClick={handleCreate} disabled={!playerName.trim()}
+                        className="w-full btn-rose py-4 rounded-2xl font-bold text-sm tracking-wide">
+                        💌 Create a Room
+                    </button>
+
+                    <div className="flex items-center gap-3 py-0.5">
+                        <div className="flex-1 h-px bg-white/8"/>
+                        <span className="text-white/22 text-xs whitespace-nowrap">or join one</span>
+                        <div className="flex-1 h-px bg-white/8"/>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <input
+                            value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} maxLength={5}
+                            onKeyDown={e => e.key === 'Enter' && handleJoin()}
+                            placeholder="ROOM CODE"
+                            className="flex-1 bg-white/5 border border-white/10 focus:border-violet-500/40 rounded-2xl px-4 py-3.5 text-white text-sm outline-none transition-colors font-mono tracking-[0.3em] uppercase"/>
+                        <button onClick={handleJoin} disabled={!playerName.trim() || joinCode.trim().length !== 5}
+                            className="px-5 py-3.5 rounded-2xl btn-violet font-bold text-sm disabled:opacity-30 transition-all">
+                            Join
+                        </button>
+                    </div>
+                </div>
+
+                <p className="text-center text-white/18 text-xs mt-6 tracking-wide">Private room · Just for two 🌙</p>
+            </div>
+        </div>
+    );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
