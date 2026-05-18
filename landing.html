@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Truth or Dare ✦</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- IMPORTANT: Link to the same manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <style>
+        body { font-family: 'Nunito', sans-serif; background-color: #070310; }
+        .font-display { font-family: 'Playfair Display', serif; }
+        .glass {
+            background: rgba(255,255,255,0.04);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.07);
+        }
+    </style>
+</head>
+<body class="text-white flex items-center justify-center h-screen overflow-hidden relative" style="background: linear-gradient(150deg, #070310 0%, #140a22 55%, #070310 100%)">
+
+    <!-- Ambient Glow -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full pointer-events-none" style="background: radial-gradient(circle, rgba(244,63,94,0.1), transparent); filter: blur(60px);"></div>
+
+    <div class="z-10 w-full max-w-sm p-8 text-center glass rounded-3xl" style="box-shadow: 0 0 50px rgba(244,63,94,0.1);">
+        <div class="text-5xl mb-4">💌</div>
+        <h1 class="font-display text-4xl font-bold mb-2" style="background: linear-gradient(135deg, #fb7185, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            Truth or Dare
+        </h1>
+        <p class="text-white/40 text-sm mb-8 tracking-wider">A private room · Just for two</p>
+
+        <!-- The Install Button (Hidden by default) -->
+        <button id="installBtn" style="display: none;" class="w-full bg-gradient-to-br from-rose-500 to-rose-700 hover:brightness-110 py-4 rounded-2xl font-bold text-sm tracking-wide transition-all shadow-lg shadow-rose-500/20">
+            Download App to Play ✨
+        </button>
+        
+        <!-- Fallback text if viewed in an unsupported browser or already installed -->
+        <p id="fallbackText" class="text-white/30 text-xs">Open in Chrome or Safari to install, or open your app drawer if already installed.</p>
+    </div>
+
+    <script>
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+        const fallbackText = document.getElementById('fallbackText');
+
+        // Register the Service Worker on the landing page too
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+
+        // Listen for the PWA install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            
+            // Update UI to show the install button
+            installBtn.style.display = 'block';
+            fallbackText.style.display = 'none';
+        });
+
+        // Handle button click
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                
+                // We've used the prompt, and can't use it again, throw it away
+                deferredPrompt = null;
+                installBtn.style.display = 'none';
+                fallbackText.style.display = 'block';
+                fallbackText.innerText = "Installing... Check your home screen!";
+            }
+        });
+
+        // Detect if the app is already successfully installed
+        window.addEventListener('appinstalled', () => {
+            installBtn.style.display = 'none';
+            fallbackText.style.display = 'block';
+            fallbackText.innerText = "App installed successfully! ✨";
+        });
+    </script>
+</body>
+</html>
